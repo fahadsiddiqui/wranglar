@@ -1,0 +1,127 @@
+[
+  {
+    "operationType": "ADLS",
+    "label": "PC_Distribution_Template_Definition",
+    "fileDescriptor": {
+      "delimiter": "|",
+      "isHeaderInclude": false,
+      "compression": "snappy",
+      "format": "csv",
+      "locations": "adl://analyticsdl01.azuredatalakestore.net/Data/Prod/Dev_Swiftgift_VFE/PC_Distribution_Template_Definition"
+    }
+  },
+  {
+    "operationType": "ADLS",
+    "label": "PC_Promocode_Assignment",
+    "fileDescriptor": {
+      "delimiter": "|",
+      "isHeaderInclude": false,
+      "compression": "snappy",
+      "format": "csv",
+      "locations": "adl://analyticsdl01.azuredatalakestore.net/Data/Prod/Dev_Swiftgift_VFE/PC_Promocode_Assignment"
+    }
+  },
+  {
+    "operationType": "HIVE",
+    "label": "PC_PromocodeBank",
+    "hiveInstruction": {
+      "databaseName": "Dev_Swiftgift_VFE",
+      "tableName": "PC_PromocodeBank"
+    }
+  },
+  {
+    "operationType": "FILTER",
+    "selectClause": [
+      "id",
+      "name"
+    ],
+    "sourceTable": "PC_Distribution_Template_Definition",
+    "condition": "id>10",
+    "label": "PC_PromocodeBank_Filter"
+  },
+  {
+    "operationType": "GROUP",
+    "groupByExpression": "state,country",
+    "aggregateExpression": "Sum(quatity) as totalQuality, COUNT(id) as numofTransaction",
+    "sourceTable": "PC_PromocodeBank",
+    "label": "PC_PromocodeBank_aggregated"
+  },
+  {
+    "operationType": "UDS",
+    "sql": "SELECT * FROM PC_PromocodeBank_aggregated WHERE numofTransaction >100",
+    "label": "PC_PromocodeBank_aggregatedImp"
+  },
+  {
+    "operationType": "JOIN",
+    "driverTable": {
+      "tableName": "PC_PromocodeBank_Filter",
+      "tableAlias": "a",
+      "selectClause": [
+        {
+          "columnName": "",
+          "alias": ""
+        },
+        {
+          "columnName": "",
+          "alias": ""
+        },
+        {
+          "columnName": "",
+          "alias": ""
+        }
+      ]
+    },
+    "otherObjects": [
+      {
+        "tableName": "PC_PromocodeBank_aggregatedImp",
+        "tableAlias": "b",
+        "selectClause": [
+          {
+            "columnName": "",
+            "alias": ""
+          },
+          {
+            "columnName": "",
+            "alias": ""
+          },
+          {
+            "columnName": "",
+            "alias": ""
+          }
+        ],
+        "joinType": "inner",
+        "condition": [
+          {
+            "leftSource": "a",
+            "leftColumn": "product_id",
+            "rightSource": "b",
+            "rightColumn": "productID",
+            "compareType": "=",
+            "operator": "AND"
+          }
+        ]
+      }
+    ],
+    "label": "ProductSalesJoin",
+    "_comments": "Union, Split and pivot is not definded  in json  but you get a idea"
+  },
+  {
+    "operationType": "SAVE",
+    "sourceTable": "ProductSalesJoin",
+    "writeMode": "Append",
+    "fileDescriptor": {
+      "delimiter": "|",
+      "isHeaderInclude": false,
+      "compression": "snappy",
+      "format": "parquet",
+      "locations": "adl://analyticsdl01.azuredatalakestore.net/Data/Prod/Dev_Swiftgift_VFE/ProductSalesJoin"
+    },
+    "partitionInstruction": {
+      "partitionColumn": [
+        "state",
+        "country"
+      ],
+      "numOfPartition": 2
+    }
+  }
+]
